@@ -1,0 +1,819 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no">
+<title>Metamorphosis</title>
+<style>
+:root{ --fc:rgba(140,160,210,0.75); --fg:rgba(120,140,200,0.3); }
+*{ margin:0;padding:0;box-sizing:border-box; }
+html,body{
+  width:100%;height:100%;overflow:hidden;
+  background:radial-gradient(ellipse at 50% 40%,#0d0818 0%,#050210 60%,#010103 100%);
+  transition:background 1.0s ease;
+  touch-action:none;user-select:none;-webkit-user-select:none;
+}
+body::before{
+  content:'';position:fixed;inset:0;z-index:0;pointer-events:none;
+  background-image:
+    radial-gradient(1px 1px at 12% 18%,rgba(255,255,255,.5) 0%,transparent 100%),
+    radial-gradient(1px 1px at 68%  9%,rgba(255,255,255,.35) 0%,transparent 100%),
+    radial-gradient(1px 1px at 38% 78%,rgba(255,255,255,.45) 0%,transparent 100%),
+    radial-gradient(1px 1px at 83% 52%,rgba(255,255,255,.28) 0%,transparent 100%),
+    radial-gradient(1.5px 1.5px at 58% 4%,rgba(255,255,255,.60) 0%,transparent 100%),
+    radial-gradient(1.5px 1.5px at 28% 44%,rgba(255,255,255,.45) 0%,transparent 100%);
+}
+#c{position:fixed;top:0;left:0;width:100%;height:100%;z-index:1;display:block;}
+
+/* ── glow-flow のみの背景SVG ── */
+#frame-flow{position:fixed;top:0;left:0;width:100%;height:100%;z-index:10;pointer-events:none;}
+.gf{fill:none;stroke:var(--fc);stroke-width:1.8;stroke-dasharray:8 280;opacity:0;
+  filter:drop-shadow(0 0 2px var(--fc));transition:opacity .5s;}
+.gf.on{opacity:.8;animation:gfa 2.4s linear infinite;}
+@keyframes gfa{to{stroke-dashoffset:-300;}}
+
+/* ── コーナーデコ（固定pxで歪まない） ── */
+.corner{position:fixed;width:60px;height:60px;z-index:10;pointer-events:none;overflow:visible;}
+#c-tl{top:0;left:0;}
+#c-tr{top:0;right:0;}
+#c-bl{bottom:0;left:0;}
+#c-br{bottom:0;right:0;}
+.corner .cl{fill:none;stroke:var(--fc);stroke-width:1.0;transition:stroke .6s;}
+.corner .cl2{fill:none;stroke:var(--fc);stroke-width:0.5;opacity:.5;transition:stroke .6s;}
+.corner.glow .cl,.corner.glow .cl2{filter:drop-shadow(0 0 3px var(--fg));}
+
+/* ── 辺中央デコ（固定px） ── */
+.edge{position:fixed;z-index:10;pointer-events:none;overflow:visible;}
+#e-t{top:0;left:50%;transform:translateX(-50%);width:40px;height:14px;}
+#e-b{bottom:0;left:50%;transform:translateX(-50%);width:40px;height:14px;}
+#e-l{left:0;top:50%;transform:translateY(-50%);width:14px;height:40px;}
+#e-r{right:0;top:50%;transform:translateY(-50%);width:14px;height:40px;}
+.edge .el{fill:none;stroke:var(--fc);stroke-width:1.0;transition:stroke .6s;}
+.edge .ed{fill:var(--fc);transition:fill .6s;}
+
+/* ── 中央リング ── */
+#ring{
+  position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);
+  width:120px;height:120px;border-radius:50%;
+  border:1px solid rgba(140,160,210,0.15);
+  z-index:11;pointer-events:none;
+  transition:border-color .2s,box-shadow .2s,transform .3s;
+}
+#ring.near{border-color:rgba(212,175,55,.85);box-shadow:0 0 18px rgba(212,175,55,.4);transform:translate(-50%,-50%) scale(1.1);}
+
+/* ── P1 アライメントSVG ── */
+#align-svg{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);width:190px;height:190px;z-index:12;pointer-events:none;overflow:visible;transition:opacity .5s;}
+
+/* ── P2 研磨バー ── */
+#reveal-bar{position:fixed;bottom:0;left:0;width:0%;height:3px;
+  background:linear-gradient(90deg,#d4af37,#fffbe0);z-index:13;pointer-events:none;
+  opacity:0;transition:opacity .4s;box-shadow:0 0 8px rgba(212,175,55,.8);}
+
+/* ── P3 リゾネートSVG ── */
+#resonate-svg{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);width:240px;height:240px;z-index:12;pointer-events:none;overflow:visible;transition:opacity .4s;opacity:0;}
+
+/* ── P3 TAP フラッシュ（コアの下） ── */
+#tap-flash{
+  position:fixed;top:50%;left:50%;
+  transform:translate(-50%,52px);
+  z-index:13;pointer-events:none;
+  font:11px/1 'Courier New',monospace;letter-spacing:.55em;
+  color:rgba(140,200,255,0);
+  transition:color .1s,text-shadow .1s;white-space:nowrap;
+}
+#tap-flash.on{color:rgba(200,230,255,.95);text-shadow:0 0 14px rgba(140,200,255,.9);}
+
+/* ── P4 充填リング ── */
+#hold-svg{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);width:200px;height:200px;z-index:12;pointer-events:none;overflow:visible;transition:opacity .4s;opacity:0;}
+
+/* ── モールス表示 ── */
+#morse-display{
+  position:fixed;top:50%;left:50%;transform:translate(-50%,62px);
+  z-index:13;pointer-events:none;
+  display:flex;gap:8px;align-items:center;justify-content:center;
+  min-height:18px;opacity:0;transition:opacity .3s;
+}
+.md{border-radius:4px;background:rgba(255,155,55,.7);box-shadow:0 0 6px rgba(255,155,55,.4);}
+.md.s{width:8px;height:8px;border-radius:50%;}
+.md.l{width:22px;height:8px;}
+.md.lit{background:rgba(255,240,140,.95)!important;box-shadow:0 0 14px rgba(255,220,60,.9)!important;}
+
+/* ── フェーズラベル（フレーム内側確保: bottom:68px） ── */
+#label{
+  position:fixed;bottom:68px;left:50%;transform:translateX(-50%);
+  z-index:12;pointer-events:none;
+  font:11px/1 'Courier New',monospace;letter-spacing:.5em;
+  color:var(--fc);transition:opacity .5s,color .5s;white-space:nowrap;
+}
+/* ── サブヒント（labelの上: bottom:84px） ── */
+#hint{
+  position:fixed;bottom:84px;left:50%;transform:translateX(-50%);
+  z-index:12;pointer-events:none;
+  font:10px/1 'Courier New',monospace;letter-spacing:.3em;
+  color:var(--fc);opacity:0;transition:opacity .6s;white-space:nowrap;
+}
+/* ── halo ── */
+#halo{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);
+  width:280px;height:280px;border-radius:50%;
+  background:radial-gradient(ellipse,rgba(255,180,60,.22) 0%,transparent 70%);
+  z-index:9;pointer-events:none;opacity:0;}
+/* ── 世代ドット（フレームコーナーから離す: bottom/right:32px） ── */
+#dots{position:fixed;bottom:32px;right:32px;z-index:12;pointer-events:none;display:flex;gap:6px;align-items:center;}
+.dot{width:7px;height:7px;border-radius:50%;opacity:.5;}
+.dot.cur{width:10px;height:10px;opacity:1;box-shadow:0 0 5px currentColor;}
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+
+<!-- glow-flow のみ（比率none=画面を覆う） -->
+<svg id="frame-flow" viewBox="0 0 100 100" preserveAspectRatio="none">
+  <path class="gf" id="flow-path" d="M8,50 L8,8 L50,8 L92,8 L92,50 L92,92 L50,92 L8,92 Z"/>
+</svg>
+
+<!-- コーナーデコ（固定px、比率不変） -->
+<svg class="corner" id="c-tl" viewBox="0 0 60 60">
+  <path class="cl"  d="M10,48 L10,10 L48,10"/>
+  <path class="cl2" d="M10,42 L10,16 L16,10 L42,10"/>
+  <line class="cl"  x1="10" y1="10" x2="18" y2="18"/>
+  <line class="cl2" x1="14" y1="10" x2="10" y2="14"/>
+</svg>
+<svg class="corner" id="c-tr" viewBox="0 0 60 60">
+  <path class="cl"  d="M50,48 L50,10 L12,10"/>
+  <path class="cl2" d="M50,42 L50,16 L44,10 L18,10"/>
+  <line class="cl"  x1="50" y1="10" x2="42" y2="18"/>
+  <line class="cl2" x1="46" y1="10" x2="50" y2="14"/>
+</svg>
+<svg class="corner" id="c-bl" viewBox="0 0 60 60">
+  <path class="cl"  d="M10,12 L10,50 L48,50"/>
+  <path class="cl2" d="M10,18 L10,44 L16,50 L42,50"/>
+  <line class="cl"  x1="10" y1="50" x2="18" y2="42"/>
+  <line class="cl2" x1="14" y1="50" x2="10" y2="46"/>
+</svg>
+<svg class="corner" id="c-br" viewBox="0 0 60 60">
+  <path class="cl"  d="M50,12 L50,50 L12,50"/>
+  <path class="cl2" d="M50,18 L50,44 L44,50 L18,50"/>
+  <line class="cl"  x1="50" y1="50" x2="42" y2="42"/>
+  <line class="cl2" x1="46" y1="50" x2="50" y2="46"/>
+</svg>
+
+<!-- 辺中央デコ -->
+<svg class="edge" id="e-t" viewBox="0 0 40 14">
+  <line class="el" x1="0"  y1="1" x2="14" y2="1"/>
+  <line class="el" x1="26" y1="1" x2="40" y2="1"/>
+  <polygon class="ed" points="20,1 22.2,5 20,9 17.8,5"/>
+</svg>
+<svg class="edge" id="e-b" viewBox="0 0 40 14">
+  <line class="el" x1="0"  y1="13" x2="14" y2="13"/>
+  <line class="el" x1="26" y1="13" x2="40" y2="13"/>
+  <polygon class="ed" points="20,13 22.2,9 20,5 17.8,9"/>
+</svg>
+<svg class="edge" id="e-l" viewBox="0 0 14 40">
+  <line class="el" x1="1" y1="0"  x2="1" y2="14"/>
+  <line class="el" x1="1" y1="26" x2="1" y2="40"/>
+  <polygon class="ed" points="1,20 5,17.8 9,20 5,22.2"/>
+</svg>
+<svg class="edge" id="e-r" viewBox="0 0 14 40">
+  <line class="el" x1="13" y1="0"  x2="13" y2="14"/>
+  <line class="el" x1="13" y1="26" x2="13" y2="40"/>
+  <polygon class="ed" points="13,20 9,17.8 5,20 9,22.2"/>
+</svg>
+
+<!-- P1 アライメントリング -->
+<svg id="align-svg" viewBox="0 0 190 190">
+  <circle cx="95" cy="95" r="80" fill="none" stroke="rgba(140,160,210,0.10)" stroke-width="1.5"/>
+  <circle id="align-arc" cx="95" cy="95" r="80" fill="none"
+    stroke="rgba(140,160,210,0.7)" stroke-width="2.8" stroke-linecap="round"
+    stroke-dasharray="503" stroke-dashoffset="503" transform="rotate(-90 95 95)"/>
+  <path id="aa-t" d="M95,5 L89,16 L101,16 Z"    fill="rgba(140,160,210,0.35)"/>
+  <path id="aa-b" d="M95,185 L89,174 L101,174 Z" fill="rgba(140,160,210,0.35)"/>
+  <path id="aa-l" d="M5,95 L16,89 L16,101 Z"    fill="rgba(140,160,210,0.35)"/>
+  <path id="aa-r" d="M185,95 L174,89 L174,101 Z" fill="rgba(140,160,210,0.35)"/>
+</svg>
+
+<!-- P3 リゾネートリング -->
+<svg id="resonate-svg" viewBox="0 0 240 240">
+  <circle id="res-ring"   cx="120" cy="120" r="90" fill="none" stroke="rgba(140,200,255,0.4)" stroke-width="1.5"/>
+  <circle id="res-ripple" cx="120" cy="120" r="90" fill="none" stroke="rgba(140,200,255,0.0)" stroke-width="2.5"/>
+  <circle id="res-ripple2"cx="120" cy="120" r="90" fill="none" stroke="rgba(255,255,255,0.0)" stroke-width="1.5"/>
+</svg>
+<div id="tap-flash">T A P</div>
+
+<!-- P4 充填リング -->
+<svg id="hold-svg" viewBox="0 0 200 200">
+  <circle cx="100" cy="100" r="86" fill="none" stroke="rgba(255,155,55,0.10)" stroke-width="3"/>
+  <circle id="hold-arc" cx="100" cy="100" r="86" fill="none"
+    stroke="rgba(255,155,55,0.85)" stroke-width="4" stroke-linecap="round"
+    stroke-dasharray="541" stroke-dashoffset="541" transform="rotate(-90 100 100)"/>
+</svg>
+<div id="morse-display"></div>
+
+<div id="ring"></div>
+<div id="label">↻&nbsp;&nbsp;A L I G N</div>
+<div id="hint"></div>
+<div id="halo"></div>
+<div id="reveal-bar"></div>
+<div id="dots"></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+const TAU=Math.PI*2;
+const W=()=>window.innerWidth,H=()=>window.innerHeight;
+
+const scene=new THREE.Scene();
+const camera=new THREE.PerspectiveCamera(50,W()/H(),.1,100);
+camera.position.z=12;
+const renderer=new THREE.WebGLRenderer({canvas:document.getElementById('c'),antialias:true,alpha:true});
+renderer.setPixelRatio(Math.min(devicePixelRatio,2));
+renderer.setSize(W(),H());
+renderer.outputEncoding=THREE.sRGBEncoding;
+window.addEventListener('resize',()=>{camera.aspect=W()/H();camera.updateProjectionMatrix();renderer.setSize(W(),H());});
+
+scene.add(new THREE.AmbientLight(0x223355,2.2));
+const dL=new THREE.DirectionalLight(0xffffff,4.5);dL.position.set(4,8,6);scene.add(dL);
+const rL=new THREE.DirectionalLight(0x8844cc,2.5);rL.position.set(-4,-2,-4);scene.add(rL);
+const pL=new THREE.PointLight(0xffffff,1.5,25);scene.add(pL);
+
+const PCFG={
+  1:{fc:'rgba(140,160,210,0.75)',fg:'rgba(120,140,200,0.3)', bg:'radial-gradient(ellipse at 50% 40%,#0d0818 0%,#050210 60%,#010103 100%)'},
+  2:{fc:'rgba(212,175,55,0.85)', fg:'rgba(212,175,55,0.35)',bg:'radial-gradient(ellipse at 50% 40%,#120d04 0%,#0a0806 60%,#010100 100%)'},
+  3:{fc:'rgba(100,190,255,0.80)',fg:'rgba(80,160,240,0.35)', bg:'radial-gradient(ellipse at 50% 40%,#040a14 0%,#020608 60%,#010103 100%)'},
+  4:{fc:'rgba(255,155,55,0.90)', fg:'rgba(255,120,40,0.45)',bg:'radial-gradient(ellipse at 50% 40%,#140404 0%,#0a0303 60%,#010000 100%)'},
+  5:{fc:'rgba(210,215,230,0.65)',fg:'rgba(190,195,220,0.28)',bg:'radial-gradient(ellipse at 50% 40%,#0d0d12 0%,#060608 60%,#010103 100%)'}
+};
+
+const corners=[document.getElementById('c-tl'),document.getElementById('c-tr'),
+                document.getElementById('c-bl'),document.getElementById('c-br')];
+const edges  =[document.getElementById('e-t'),document.getElementById('e-b'),
+               document.getElementById('e-l'),document.getElementById('e-r')];
+
+const applyPhase=p=>{
+  const c=PCFG[p];
+  document.documentElement.style.setProperty('--fc',c.fc);
+  document.documentElement.style.setProperty('--fg',c.fg);
+  document.body.style.background=c.bg;
+  const glow=p>=2;
+  corners.forEach(el=>el.classList.toggle('glow',glow));
+  flowEl.classList.toggle('on',p===1);
+  alignSvg.style.opacity  = p===1?'1':'0';
+  revealBar.style.opacity = p===2?'1':'0';
+  resonSvg.style.opacity  = p===3?'1':'0';
+  tapFlashEl.style.opacity= p===3?'1':'0';
+  holdSvg.style.opacity   = p===4?'1':'0';
+  morseEl.style.opacity   = p===4?'1':'0';
+  labelEl.style.opacity   = (p>=1&&p<=3)?'1':'0';
+  labelEl.textContent={
+    1:'↻\u00a0\u00a0A L I G N',
+    2:'≋\u00a0\u00a0R E V E A L',
+    3:'◎\u00a0\u00a0R E S O N A T E'
+  }[p]||'';
+  haloEl.style.opacity='0';
+  if(p!==3){tapFlashEl.classList.remove('on');hintEl.style.opacity='0';}
+};
+
+const flowEl    =document.getElementById('flow-path');
+const ringEl    =document.getElementById('ring');
+const labelEl   =document.getElementById('label');
+const hintEl    =document.getElementById('hint');
+const haloEl    =document.getElementById('halo');
+const dotsEl    =document.getElementById('dots');
+const alignSvg  =document.getElementById('align-svg');
+const alignArc  =document.getElementById('align-arc');
+const aaArrows  =['aa-t','aa-b','aa-l','aa-r'].map(id=>document.getElementById(id));
+const revealBar =document.getElementById('reveal-bar');
+const resonSvg  =document.getElementById('resonate-svg');
+const resRing   =document.getElementById('res-ring');
+const resRipple =document.getElementById('res-ripple');
+const resRipple2=document.getElementById('res-ripple2');
+const tapFlashEl=document.getElementById('tap-flash');
+const holdSvg   =document.getElementById('hold-svg');
+const holdArc   =document.getElementById('hold-arc');
+const morseEl   =document.getElementById('morse-display');
+
+// マテリアル
+const coreMat=new THREE.MeshPhongMaterial({color:0x9966ff,emissive:0x330055,specular:0xffffff,shininess:80,flatShading:true});
+const petalMat=new THREE.MeshPhongMaterial({color:0xaaddff,emissive:0x002233,specular:0xffffff,shininess:120,flatShading:true,transparent:true,opacity:.88});
+
+const MAX_P=96;
+const pShape=new THREE.Shape();
+pShape.moveTo(0,0);pShape.bezierCurveTo(4,2,7,7,0,13);pShape.bezierCurveTo(-7,7,-4,2,0,0);
+const pGeo=new THREE.ExtrudeGeometry(pShape,{depth:.15,bevelEnabled:true,bevelSize:.08,bevelThickness:.10,bevelSegments:1,curveSegments:4});
+pGeo.computeVertexNormals();
+const petals=new THREE.InstancedMesh(pGeo,petalMat,MAX_P);petals.count=0;scene.add(petals);
+const petalInfo=[];
+const PC=180;
+const pPA=new Float32Array(PC*3);
+const pPV=Array.from({length:PC},()=>new THREE.Vector3());
+const pPG=new THREE.BufferGeometry();
+pPG.setAttribute('position',new THREE.BufferAttribute(pPA,3));
+const pPM=new THREE.PointsMaterial({size:.11,color:0xffcc44,transparent:true,opacity:0,blending:THREE.AdditiveBlending,depthWrite:false});
+scene.add(new THREE.Points(pPG,pPM));
+
+// 状態
+const S={
+  phase:1,polish:0,energy:0,
+  holding:false,dragging:false,
+  demoOn:true,demoVx:.008,demoVy:.005,
+  rot:0,flash:0,hue:.7,petalHue:.75,
+  p5Start:0,prevX:0,prevY:0,pdTime:0,lastInteract:0,
+  beatPhase:0,rippleT:-1,ripple2T:-1,
+  tapHistory:[]
+};
+const UP=new THREE.Vector3(0,1,0),RIGHT=new THREE.Vector3(1,0,0),FWD=new THREE.Vector3(0,0,1);
+const IQ=new THREE.Quaternion();
+const SNAP=Math.cos(.05),NEAR=Math.cos(.30);
+let coreObj=null,basePosArr=null,faceDistort=null,arrowT=0,hintShown=false;
+let fragmentMeshes=[];
+const GEN_HUES=[];
+
+const renderMorse=()=>{
+  morseEl.innerHTML='';
+  const recent=S.tapHistory.slice(-4);
+  recent.forEach(tap=>{
+    const el=document.createElement('div');
+    el.className='md '+(tap.type==='short'?'s':'l');
+    const last3=recent.slice(-3).map(t=>t.type);
+    if(JSON.stringify(last3)===JSON.stringify(['short','long','short'])) el.classList.add('lit');
+    morseEl.appendChild(el);
+  });
+};
+
+// フラグメント生成
+const buildFragments=()=>{
+  fragmentMeshes.forEach(m=>{scene.remove(m);m.geometry.dispose();m.material.dispose();});
+  fragmentMeshes=[];
+  if(!coreObj) return;
+  const srcPos=coreObj.geometry.attributes.position;
+  const count=Math.floor(srcPos.count/3);
+  for(let f=0;f<count;f++){
+    const i=f*3;
+    const ax=srcPos.getX(i),ay=srcPos.getY(i),az=srcPos.getZ(i);
+    const bx=srcPos.getX(i+1),by=srcPos.getY(i+1),bz=srcPos.getZ(i+1);
+    const cx2=srcPos.getX(i+2),cy2=srcPos.getY(i+2),cz2=srcPos.getZ(i+2);
+    const g=new THREE.BufferGeometry();
+    g.setAttribute('position',new THREE.BufferAttribute(new Float32Array([ax,ay,az,bx,by,bz,cx2,cy2,cz2]),3));
+    g.computeVertexNormals();
+    const mat=new THREE.MeshPhongMaterial({
+      color:coreMat.color.clone(),emissive:coreMat.emissive.clone(),
+      specular:new THREE.Color(0xffffff),shininess:coreMat.shininess,
+      flatShading:true,transparent:true,opacity:1
+    });
+    const mesh=new THREE.Mesh(g,mat);
+    mesh.position.copy(coreObj.position);
+    mesh.quaternion.copy(coreObj.quaternion);
+    const center=new THREE.Vector3((ax+bx+cx2)/3,(ay+by+cy2)/3,(az+bz+cz2)/3)
+      .applyQuaternion(coreObj.quaternion);
+    const spd=.05+Math.random()*.07;
+    mesh.userData.vel=center.normalize().multiplyScalar(spd);
+    mesh.userData.vel.y+=.015+Math.random()*.025;
+    mesh.userData.angVel=new THREE.Vector3(
+      (Math.random()-.5)*.18,(Math.random()-.5)*.18,(Math.random()-.5)*.18
+    );
+    scene.add(mesh);
+    fragmentMeshes.push(mesh);
+  }
+};
+
+// ブルーム発動
+const triggerBloom=energy=>{
+  const cnt=Math.floor(energy*MAX_P);
+  petalInfo.length=0;
+  for(let i=0;i<cnt;i++){
+    const phi=Math.acos(Math.random()*2-1),th=Math.random()*TAU;
+    const fp=new THREE.Vector3().setFromSphericalCoords(2.1,phi,th);
+    const sp=fp.clone().normalize().multiplyScalar(9);
+    const d=new THREE.Object3D();
+    d.position.copy(fp);
+    d.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0),fp.clone().normalize());
+    d.rotateY(Math.random()*TAU);
+    d.rotateX((Math.random()-.5)*2.0);
+    d.scale.setScalar(.07+Math.random()*.10);
+    d.updateMatrix();
+    petalInfo.push({fp,sp,mat:d.matrix.clone(),d,delay:i*.018,landed:false});
+  }
+  petals.count=petalInfo.length;
+  petalMat.emissive.setHSL(S.petalHue,1,.20+energy*.30);
+  S.p5Start=clock.getElapsedTime();
+  buildFragments();
+  applyPhase(5);S.phase=5;
+  pPM.color.setHSL(S.petalHue,1,.7);
+  burstParticles();
+  pL.intensity=12*energy;
+  setTimeout(()=>{renderer.domElement.style.transition='opacity 2.5s';renderer.domElement.style.opacity='0';},5000);
+  setTimeout(()=>spawn(true),7500);
+};
+
+// スポーン
+const spawn=(fade=false)=>{
+  const go=()=>{
+    S.hue=Math.random();S.petalHue=(S.hue+.12)%1;
+    GEN_HUES.push(S.hue);
+    if(coreObj){scene.remove(coreObj);coreObj.geometry.dispose();}
+    fragmentMeshes.forEach(m=>{scene.remove(m);m.geometry.dispose();m.material.dispose();});
+    fragmentMeshes=[];
+    const detail=[0,1,2,3][Math.floor(Math.random()*4)];
+    const geo=new THREE.IcosahedronGeometry(2.2,detail);
+    geo.computeVertexNormals();
+    basePosArr=new Float32Array(geo.attributes.position.array);
+    faceDistort=new Float32Array(Math.floor(geo.attributes.position.count/3));
+    coreMat.color.setHSL(S.hue,.7,.50);coreMat.emissive.setHSL(S.hue,.9,.06);
+    coreMat.shininess=80;coreMat.transparent=false;coreMat.opacity=1;coreMat.needsUpdate=true;
+    petalMat.color.setHSL(S.petalHue,.8,.65);petalMat.emissive.setHSL(S.petalHue,1,.10);
+    pL.color.setHSL(S.petalHue,1,.5);rL.color.setHSL((S.hue+.5)%1,.7,.4);
+    coreObj=new THREE.Mesh(geo,coreMat);
+    coreObj.rotation.set(Math.random()*TAU,Math.random()*TAU,Math.random()*TAU);
+    scene.add(coreObj);
+    S.phase=1;S.polish=0;S.energy=0;
+    S.holding=false;S.dragging=false;
+    S.demoOn=true;S.demoVx=.008;S.demoVy=.005;
+    S.rot=0;S.flash=0;S.lastInteract=0;
+    S.beatPhase=0;S.rippleT=-1;S.ripple2T=-1;
+    S.tapHistory=[];
+    petals.count=0;petalInfo.length=0;pPM.opacity=0;
+    coreObj.scale.set(1,1,1);coreObj.position.set(0,0,0);
+    petals.scale.set(1,1,1);petals.position.set(0,0,0);petals.rotation.set(0,0,0);
+    alignArc.setAttribute('stroke-dashoffset','503');
+    revealBar.style.width='0%';
+    holdArc.setAttribute('stroke-dashoffset','541');holdArc.style.opacity='1';
+    morseEl.innerHTML='';
+    ringEl.classList.remove('near');
+    hintEl.style.opacity='0';
+    renderer.domElement.style.transition='opacity .4s';
+    renderer.domElement.style.opacity='1';
+    applyPhase(1);
+    dotsEl.innerHTML='';
+    GEN_HUES.slice(-8).forEach((h,i,a)=>{
+      const d=document.createElement('div');
+      d.className='dot'+(i===a.length-1?' cur':'');
+      d.style.background=`hsl(${Math.round(h*360)},80%,60%)`;
+      d.style.color=`hsl(${Math.round(h*360)},80%,60%)`;
+      dotsEl.appendChild(d);
+    });
+    if(!hintShown){
+      hintShown=true;
+      hintEl.textContent='drag to align';
+      hintEl.style.opacity='.6';
+      setTimeout(()=>{if(S.phase===1) hintEl.style.opacity='0';},3500);
+    }
+  };
+  if(fade) setTimeout(go,50);
+  else go();
+};
+spawn(false);
+
+const burstParticles=()=>{
+  for(let i=0;i<PC;i++){
+    pPA[i*3]=(Math.random()-.5)*3;pPA[i*3+1]=(Math.random()-.5)*3;pPA[i*3+2]=(Math.random()-.5)*3;
+    const d=new THREE.Vector3(pPA[i*3],pPA[i*3+1],pPA[i*3+2]).normalize();
+    pPV[i].copy(d.multiplyScalar(.035+Math.random()*.04));
+  }
+  pPG.attributes.position.needsUpdate=true;pPM.opacity=.85;
+};
+
+// インタラクション
+const gc=e=>e.touches?e.touches[0]:e;
+renderer.domElement.addEventListener('pointerdown',e=>{
+  if(e.touches&&e.touches.length>1) return;
+  const c=gc(e);S.prevX=c.clientX;S.prevY=c.clientY;
+  S.dragging=true;S.demoOn=false;
+  S.pdTime=performance.now();
+  S.lastInteract=clock.getElapsedTime();
+  if(S.phase===4) S.holding=true;
+},{passive:true});
+
+renderer.domElement.addEventListener('pointermove',e=>{
+  if(!S.dragging) return;
+  const c=gc(e);
+  const dx=c.clientX-S.prevX,dy=c.clientY-S.prevY;
+  S.prevX=c.clientX;S.prevY=c.clientY;
+  S.lastInteract=clock.getElapsedTime();
+  if(S.phase===1){
+    const lf=FWD.clone().applyQuaternion(coreObj.quaternion.clone().invert());
+    const al=lf.dot(FWD);
+    if(al>NEAR){
+      ringEl.classList.add('near');
+      coreObj.quaternion.slerp(IQ,.15);
+      const a2=FWD.clone().applyQuaternion(coreObj.quaternion.clone().invert()).dot(FWD);
+      if(a2>SNAP){
+        coreObj.quaternion.copy(IQ);coreObj.rotation.setFromQuaternion(IQ);
+        S.rot=coreObj.rotation.y;S.phase=2;S.flash=.4;
+        ringEl.classList.remove('near');
+        coreMat.color.setHSL(S.hue,.6,.15);coreMat.emissive.setHSL(S.hue,.9,.03);
+        coreMat.shininess=30;coreMat.needsUpdate=true;
+        applyPhase(2);
+        hintEl.textContent='rub to reveal';
+        hintEl.style.opacity='.6';
+        setTimeout(()=>{if(S.phase===2) hintEl.style.opacity='0';},2800);
+      }
+    } else {
+      if(al>NEAR*.85) coreMat.emissive.setHSL(S.petalHue,1,.18);
+      ringEl.classList.remove('near');
+      const prx=Math.max(0,(al+1)/2);
+      coreObj.quaternion
+        .premultiply(new THREE.Quaternion().setFromAxisAngle(UP,   dx*.007*(1-prx*.7)))
+        .premultiply(new THREE.Quaternion().setFromAxisAngle(RIGHT,dy*.007*(1-prx*.7)));
+    }
+  } else if(S.phase===2){
+    const fr=Math.abs(dx)+Math.abs(dy);
+    S.polish=Math.min(1,S.polish+fr*.00015);
+    revealBar.style.width=(S.polish*100)+'%';
+    coreMat.color.setHSL(S.hue,.85,.15+S.polish*.55);
+    coreMat.emissive.setHSL(S.hue,1,S.polish*.20);
+    coreMat.shininess=30+S.polish*270;
+    if(fr>4&&faceDistort){
+      const ns=Math.min(8,Math.floor(fr*.4));
+      for(let k=0;k<ns;k++){
+        const fi=Math.floor(Math.random()*faceDistort.length);
+        faceDistort[fi]=Math.min(.55,(1-S.polish)*.5+Math.random()*.25);
+      }
+    }
+    if(fr>5){
+      pPM.opacity=Math.min(.75,fr*.04);
+      const wx=(c.clientX/W()*2-1)*6,wy=-(c.clientY/H()*2-1)*6*(H()/W());
+      for(let i=0;i<Math.min(10,Math.floor(fr*.5));i++){
+        const idx=Math.floor(Math.random()*PC)*3;
+        pPA[idx]=wx+(Math.random()-.5)*1.2;pPA[idx+1]=wy+(Math.random()-.5)*1.2;pPA[idx+2]=1+Math.random();
+        pPV[idx/3].set((Math.random()-.5)*.2,Math.random()*.2,Math.random()*.1);
+      }
+      pPG.attributes.position.needsUpdate=true;
+      if(navigator.vibrate) navigator.vibrate(1);
+    }
+  }
+},{passive:true});
+
+window.addEventListener('pointerup',()=>{
+  if(!S.dragging) return;
+  S.dragging=false;
+  const dur=performance.now()-S.pdTime;
+
+  // P3: ビートタップ（1回成功でP4）
+  if(S.phase===3){
+    const sinV=Math.sin(S.beatPhase);
+    if(sinV>0.55){
+      // 成功：大波紋 → P4
+      S.rippleT=0;S.ripple2T=0.15;
+      coreMat.emissive.setHSL(0,0,0.6); // 白く光る
+      setTimeout(()=>{
+        S.energy=.50;
+        S.phase=4;
+        applyPhase(4);
+        holdArc.setAttribute('stroke-dashoffset',String((541*(1-.50)).toFixed(1)));
+        hintEl.textContent='hold \u00a0or\u00a0 · — ·';
+        hintEl.style.opacity='.6';
+        setTimeout(()=>{if(S.phase===4) hintEl.style.opacity='0';},3000);
+      },280);
+      if(navigator.vibrate) navigator.vibrate([15,10,15]);
+    } else {
+      // ミス：赤フラッシュ
+      coreMat.emissive.setHSL(0,.9,.2);
+      setTimeout(()=>coreMat.emissive.setHSL(S.petalHue,1,.18),300);
+      if(navigator.vibrate) navigator.vibrate(40);
+    }
+    return;
+  }
+
+  // P4: モールス
+  if(S.phase===4){
+    S.holding=false;
+    const tapType=dur<300?'short':'long';
+    S.tapHistory.push({type:tapType,t:Date.now()});
+    while(S.tapHistory.length>0&&Date.now()-S.tapHistory[0].t>2500) S.tapHistory.shift();
+    renderMorse();
+    const last3=S.tapHistory.slice(-3).map(t=>t.type);
+    if(JSON.stringify(last3)===JSON.stringify(['short','long','short'])){
+      triggerBloom(1.0);S.tapHistory=[];
+    } else if(tapType==='long'&&dur>400){
+      if(S.energy>.25) triggerBloom(S.energy);
+      else{ holdArc.setAttribute('stroke-dashoffset','541');S.energy=0; }
+    } else {
+      S.energy=Math.min(1,S.energy+.12);
+      holdArc.setAttribute('stroke-dashoffset',String((541*(1-S.energy)).toFixed(1)));
+      const l3=S.tapHistory.slice(-3).map(t=>t.type);
+      if(l3.length===3&&l3.every(t=>t==='short')){triggerBloom(.45);S.tapHistory=[];}
+    }
+    if(S.phase===4){coreObj.scale.set(1,1,1);coreObj.position.set(0,0,0);}
+  }
+});
+document.addEventListener('contextmenu',e=>e.preventDefault());
+
+// メインループ
+const clock=new THREE.Clock();
+const EQ=t=>t*t*t*t;
+
+function animate(){
+  requestAnimationFrame(animate);
+  const t=clock.getElapsedTime();
+  const dt=Math.min(clock.getDelta(),.05);
+
+  if(S.flash>0){
+    S.flash=Math.max(0,S.flash-dt*2.5);
+    renderer.toneMapping=THREE.ACESFilmicToneMapping;
+    renderer.toneMappingExposure=1+S.flash*3;
+  } else { renderer.toneMapping=THREE.NoToneMapping; }
+  if(pL.intensity>1.5) pL.intensity*=.90;
+  camera.position.z=S.phase===1?12+Math.sin(t*1.1)*.4:12+(0-(camera.position.z-12))*.05;
+
+  // P1
+  if(S.phase===1){
+    if(!S.demoOn&&(t-S.lastInteract)>6){S.demoOn=true;S.demoVy=.004;S.demoVx=.003;}
+    if(S.demoOn){
+      coreObj.quaternion
+        .premultiply(new THREE.Quaternion().setFromAxisAngle(UP,   S.demoVy))
+        .premultiply(new THREE.Quaternion().setFromAxisAngle(RIGHT,S.demoVx));
+      S.demoVy*=.996;S.demoVx*=.996;
+    }
+    const pos=coreObj.geometry.attributes.position;
+    for(let i=0;i<pos.count;i++){
+      const bx=basePosArr[i*3],by=basePosArr[i*3+1],bz=basePosArr[i*3+2];
+      const n=Math.sin(bx*4+t*2)*Math.cos(by*4+t*1.5)*Math.sin(bz*4+t*1.8);
+      pos.setXYZ(i,bx*(1+n*.22),by*(1+n*.22),bz*(1+n*.22));
+    }
+    pos.needsUpdate=true;coreObj.geometry.computeVertexNormals();
+    const al=FWD.clone().applyQuaternion(coreObj.quaternion.clone().invert()).dot(FWD);
+    const res=Math.max(0,(al-.3)/.7);
+    coreMat.emissive.setHSL(S.petalHue,1,.04+res*.20);
+    ringEl.classList.toggle('near',al>NEAR);
+    const arcFill=Math.max(0,(al+1)/2);
+    alignArc.setAttribute('stroke-dashoffset',String((503*(1-arcFill)).toFixed(1)));
+    const r2=Math.round(140+res*72),g2=Math.round(160+res*15),b2=Math.round(210-res*155);
+    alignArc.setAttribute('stroke',`rgba(${r2},${g2},${b2},${(.45+res*.55).toFixed(2)})`);
+    arrowT=(arrowT+dt*2.2)%(TAU);
+    const ap1=(0.18+Math.sin(arrowT)*.18).toFixed(2);
+    const ap2=(0.18+Math.sin(arrowT+1.5)*.18).toFixed(2);
+    aaArrows[0].setAttribute('fill',`rgba(140,160,210,${ap1})`);
+    aaArrows[1].setAttribute('fill',`rgba(140,160,210,${ap1})`);
+    aaArrows[2].setAttribute('fill',`rgba(140,160,210,${ap2})`);
+    aaArrows[3].setAttribute('fill',`rgba(140,160,210,${ap2})`);
+  }
+  // P2
+  else if(S.phase===2){
+    const idle=t-S.lastInteract;
+    if(idle>5){
+      const blink=.5+Math.sin(t*3.5)*.4;
+      revealBar.style.boxShadow=`0 0 ${6+blink*8}px rgba(212,175,55,${.35+blink*.4})`;
+    }
+    const pos=coreObj.geometry.attributes.position;
+    const fc=faceDistort?faceDistort.length:0;
+    for(let i=0;i<pos.count;i++){
+      const bx=basePosArr[i*3],by=basePosArr[i*3+1],bz=basePosArr[i*3+2];
+      const n=Math.sin(bx*4+t*3)*Math.cos(by*4+t*2)*Math.sin(bz*4+t*2.5)*.22*(1-S.polish);
+      const spk=faceDistort&&Math.floor(i/3)<fc?faceDistort[Math.floor(i/3)]:0;
+      const d=1+n+spk;
+      pos.setXYZ(i,bx*d,by*d,bz*d);
+    }
+    pos.needsUpdate=true;coreObj.geometry.computeVertexNormals();
+    if(faceDistort) for(let fi=0;fi<faceDistort.length;fi++) faceDistort[fi]*=.86;
+    coreObj.rotation.y=t*.18+S.rot;
+    if(pPM.opacity>0){
+      pPM.opacity=Math.max(0,pPM.opacity-.020);
+      for(let i=0;i<PC;i++){pPA[i*3]+=pPV[i].x;pPA[i*3+1]+=pPV[i].y;pPA[i*3+2]+=pPV[i].z;pPV[i].y-=.008;}
+      pPG.attributes.position.needsUpdate=true;
+    }
+    if(S.polish>=1){
+      S.rot=coreObj.rotation.y-t*.22;S.flash=.35;
+      coreMat.color.setHSL(S.hue,.85,.70);coreMat.emissive.setHSL(S.petalHue,1,.22);
+      coreMat.shininess=300;coreMat.needsUpdate=true;
+      applyPhase(3);S.phase=3;S.beatPhase=0;
+      // P3ヒントを常時表示
+      hintEl.textContent='tap when it glows';
+      hintEl.style.opacity='.65';
+    }
+  }
+  // P3: RESONATE
+  else if(S.phase===3){
+    S.beatPhase+=dt*TAU*.85;
+    const sinV=Math.sin(S.beatPhase);
+    const pulse=1+sinV*.13;
+    coreObj.scale.setScalar(pulse);
+    coreObj.rotation.y=t*.15+S.rot;
+    const isNearPeak=sinV>0.60;
+    // ピーク時: コア白光り + リング白
+    const glowL=isNearPeak?(.15+sinV*.5):(.15+Math.max(0,sinV)*.25);
+    coreMat.emissive.setHSL(S.petalHue,isNearPeak?.3:1,glowL);
+    if(isNearPeak){
+      coreMat.emissive.setHSL(0,0,glowL); // 白に近く
+      tapFlashEl.classList.add('on');
+    } else {
+      tapFlashEl.classList.remove('on');
+    }
+    // リング拡縮 ±18
+    const rs=90+sinV*18;
+    resRing.setAttribute('r',String(rs.toFixed(1)));
+    const ro=(.25+Math.max(0,sinV)*.55).toFixed(2);
+    resRing.setAttribute('stroke',isNearPeak?`rgba(220,240,255,${ro})`:`rgba(140,200,255,${ro})`);
+    resRing.setAttribute('stroke-width',isNearPeak?'2.5':'1.5');
+    // 波紋1
+    if(S.rippleT>=0){
+      S.rippleT+=dt;
+      const rp=90+S.rippleT*110;
+      const rop=Math.max(0,.85-S.rippleT*1.4);
+      resRipple.setAttribute('r',String(rp.toFixed(1)));
+      resRipple.setAttribute('stroke',`rgba(200,230,255,${rop.toFixed(2)})`);
+      resRipple.setAttribute('stroke-width','3');
+      if(S.rippleT>0.7) S.rippleT=-1;
+    }
+    // 波紋2（少し遅れ）
+    if(S.ripple2T>=0){
+      S.ripple2T+=dt;
+      const rp2=90+S.ripple2T*90;
+      const rop2=Math.max(0,.6-S.ripple2T*1.1);
+      resRipple2.setAttribute('r',String(rp2.toFixed(1)));
+      resRipple2.setAttribute('stroke',`rgba(255,255,255,${rop2.toFixed(2)})`);
+      resRipple2.setAttribute('stroke-width','1.5');
+      if(S.ripple2T>0.65) S.ripple2T=-1;
+    }
+  }
+  // P4: BLOOM
+  else if(S.phase===4){
+    if(S.holding){
+      S.energy=Math.min(1,S.energy+.005);
+      holdArc.setAttribute('stroke-dashoffset',String((541*(1-S.energy)).toFixed(1)));
+      holdArc.style.opacity='1';
+      if(S.energy>.82){
+        holdArc.setAttribute('stroke','rgba(255,240,160,0.95)');
+        holdArc.style.filter='drop-shadow(0 0 10px rgba(255,230,80,.8))';
+        haloEl.style.opacity=String(Math.min(1,(S.energy-.82)*5.5));
+        haloEl.style.transform=`translate(-50%,-50%) scale(${1+S.energy*.5})`;
+      } else {
+        holdArc.setAttribute('stroke','rgba(255,155,55,0.85)');
+        holdArc.style.filter='';haloEl.style.opacity='0';
+      }
+    } else {
+      const blink=.55+Math.sin(t*2.2)*.35;
+      holdArc.style.opacity=String(blink.toFixed(2));
+    }
+    const bpm=60+S.energy*100,tp=(t*bpm/60)%1;
+    const beat=tp<.18?Math.sin((tp/.18)*Math.PI):0;
+    coreObj.scale.setScalar(1+beat*S.energy*.18);
+    petals.scale.setScalar(1+beat*S.energy*.18);
+    pL.intensity=1.5+beat*S.energy*10;
+    coreMat.emissive.setHSL(S.petalHue,1,.12+S.energy*.42);
+    pPM.opacity=S.energy*.65;
+    if(S.energy<.5) pPM.color.setRGB(1,.85+S.energy*.3,S.energy*.4);
+    else pPM.color.lerpColors(new THREE.Color(1,1,.3),new THREE.Color().setHSL(S.petalHue,1,.7),(S.energy-.5)*2);
+    for(let i=0;i<PC;i++){
+      pPA[i*3]*=.94;pPA[i*3+1]*=.94;pPA[i*3+2]*=.94;
+      if(Math.abs(pPA[i*3])<.15){pPA[i*3]=(Math.random()-.5)*7;pPA[i*3+1]=(Math.random()-.5)*7;pPA[i*3+2]=(Math.random()-.5)*7;}
+    }
+    pPG.attributes.position.needsUpdate=true;
+    coreObj.rotation.y=t*.22+S.rot;petals.rotation.y=coreObj.rotation.y;
+  }
+  // P5: SCATTER
+  else if(S.phase===5){
+    const el5=t-S.p5Start;
+    // Stage A: 膨張・高速回転
+    if(el5<1.2&&coreObj&&coreObj.visible){
+      coreObj.scale.setScalar(1+el5*0.9);
+      coreObj.rotation.y+=dt*3.5;coreObj.rotation.x+=dt*1.8;
+      coreMat.opacity=Math.max(0,1-el5*.7);
+      if(el5>0.25) coreMat.transparent=true;
+    }
+    // Stage B: フラグメント飛散（0.6s後から）
+    if(el5>=0.6){
+      if(coreObj&&coreObj.visible&&el5>1.1) coreObj.visible=false;
+      const fe=el5-0.6;
+      fragmentMeshes.forEach(m=>{
+        m.position.addScaledVector(m.userData.vel,1);
+        m.userData.vel.y-=.0025;
+        m.rotation.x+=m.userData.angVel.x;
+        m.rotation.y+=m.userData.angVel.y;
+        m.rotation.z+=m.userData.angVel.z;
+        m.material.opacity=Math.max(0,1-fe*.30);
+      });
+    }
+    // Stage C: 花びら
+    let upd=false;
+    for(let i=0;i<petalInfo.length;i++){
+      const p=petalInfo[i];const el=el5-p.delay;if(el<0) continue;
+      const tt=Math.min(1,el/.35),te=EQ(tt);
+      p.d.position.lerpVectors(p.sp,p.fp,te);
+      p.d.quaternion.setFromRotationMatrix(p.mat);
+      p.d.scale.setFromMatrixScale(p.mat);p.d.updateMatrix();
+      petals.setMatrixAt(i,p.d.matrix);upd=true;
+      if(tt>=1&&!p.landed){
+        p.landed=true;pL.intensity=Math.max(pL.intensity,3);
+        for(let k=0;k<5;k++){
+          const si=Math.floor(Math.random()*PC)*3;
+          pPA[si]=p.fp.x+(Math.random()-.5)*.8;
+          pPA[si+1]=p.fp.y+(Math.random()-.5)*.8;
+          pPA[si+2]=p.fp.z+(Math.random()-.5)*.8;
+          pPV[si/3].set((Math.random()-.5)*.06,Math.random()*.06,(Math.random()-.5)*.06);
+        }
+        pPG.attributes.position.needsUpdate=true;
+        pPM.opacity=Math.max(pPM.opacity,.5);
+      }
+    }
+    if(upd) petals.instanceMatrix.needsUpdate=true;
+    petals.position.y=Math.sin(t*1.2)*.4;
+    if(pPM.opacity>0){
+      pPM.opacity=Math.max(0,pPM.opacity-.003);
+      for(let i=0;i<PC;i++){pPA[i*3]+=pPV[i].x;pPA[i*3+1]+=pPV[i].y;pPA[i*3+2]+=pPV[i].z;}
+      pPG.attributes.position.needsUpdate=true;
+    }
+  }
+  renderer.render(scene,camera);
+}
+animate();
+</script>
+</body>
+</html>
